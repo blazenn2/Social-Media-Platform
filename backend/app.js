@@ -8,6 +8,7 @@ const multer = require('multer');
 const { v4: uuidv4 } = require('uuid');
 
 const feedRoutes = require('./routes/feed');
+const authRoutes = require('./routes/auth');
 
 const app = express();
 
@@ -37,6 +38,8 @@ app.use((req, res, next) => {
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
     next();
 });
+
+app.use('/auth', authRoutes);
 
 app.use('/feed', feedRoutes);
 
