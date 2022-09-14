@@ -27,13 +27,15 @@ exports.createPost = async (req, res, next) => {
     // -------------- SERVER SIDE VALIDATION OF INPUT -------------- //
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-      const err = { errors: errors.array(), message: "Validation failed, entered data is incorrect.", statusCode: 422 };
-      next(err);
+      const error = new Error("Validation failed, entered data is incorrect.");
+      error.statusCode = 422;
+      throw error;
     }
 
     if (!req.file) {
-      const err = { message: "No image provided.", statusCode: 422 };
-      next(err);
+      const error = new Error("No image provided.");
+      error.statusCode = 422;
+      throw error;
     }
 
     // -------------- INSERTING POST TO DATABASE -------------- //
@@ -47,7 +49,6 @@ exports.createPost = async (req, res, next) => {
       post: createPost
     });
   } catch (err) {
-    err.statusCode = 422;
     next(err);
   }
 };
