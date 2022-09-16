@@ -1,7 +1,9 @@
 const { validationResult } = require('express-validator');
 const post = require('../models/post');
+const user = require('../models/user');
 const path = require('path');
 const fs = require('fs');
+const mongoose = require('mongoose');
 
 // <=========================== GET ALL POSTS FROM DB ===========================> //
 exports.getPosts = async (req, res, next) => {
@@ -43,8 +45,13 @@ exports.createPost = async (req, res, next) => {
     const content = req.body.content;
     const imageUrl = req.file.path.replace("\\", "/");
 
-    const createPost = await post({ title: title, content: content, imageUrl: imageUrl, creator: { name: 'Maximilian' } }).save();
-    if (createPost) return res.status(201).json({
+    const userId = req.userId;
+
+    const getUser = await user.findOne({ _id: userId });
+    const createPost = await post({ title: title, content: content, imageUrl: imageUrl, creator: { _id: mongoose.Types.ObjectId(userId), name: getUser.name } }).save();
+    getUser.post.push(createPost._id);
+    getUser.save();
+    if (createPost && getUser) return res.status(201).json({
       message: 'Post created successfully!',
       post: createPost
     });
@@ -76,6 +83,7 @@ exports.updatePost = async (req, res, next) => {
   try {
     const postId = req.params.postId;
     let imageUrl = req.body.image;
+    const userId = req.userId;
     if (req.file) imageUrl = req.file.path;
     if (!imageUrl) {
       const error = new Error("No file picked");
@@ -88,6 +96,11 @@ exports.updatePost = async (req, res, next) => {
       error.statusCode = 404;
       throw error;
     }
+    if (getPost.creator._id.toString() !== userId) {
+      const error = new Error("Invalid User!");
+      error.statusCode = 401;
+      throw error;
+    };
     getPost.title = req.body.title;
     getPost.content = req.body.content;
     if (imageUrl !== getPost.imageUrl) clearImage(getPost.imageUrl);
@@ -101,18 +114,26 @@ exports.updatePost = async (req, res, next) => {
 
 exports.deletePost = async (req, res, next) => {
   try {
+    const userId = req.userId;
     const postId = req.params.postId;
     const getPost = await post.findById(postId);
     if (!getPost) {
       const error = new Error(`Couldn't find post.`);
       error.statusCode = 404;
       throw error;
-    } else {
-      const deletedPost = await post.findByIdAndRemove(postId);
-      clearImage(getPost.imageUrl);
-      console.log(deletedPost);
-      return res.status(200).json({ message: "Deleted post successfully", });
     }
+    if (getPost.creator._id.toString() !== userId) {
+      const error = new Error("Invalid User!");
+      error.statusCode = 401;
+      throw error;
+    };
+    const deletedPost = await post.findByIdAndRemove(postId);
+    const getUser = await user.findOne({ _id: userId });
+    getUser.post.pull(postId);
+    getUser.save();
+    clearImage(getPost.imageUrl);
+    return res.status(200).json({ message: "Deleted post successfully", });
+
   } catch (err) {
     next(err);
   }

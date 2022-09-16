@@ -180,9 +180,7 @@ class Feed extends Component {
     this.setState({ postsLoading: true });
     fetch(`http://localhost:8080/feed/post/${postId}`, {
       method: 'DELETE',
-      headers: { 'Content-Type': 'application/json', "Authorization" : "Bearer"  + this.props.token }
-      // headers: { "Authorization": "Bearer " + this.props.token },
-
+      headers: { 'Content-Type': 'application/json', "Authorization": "Bearer " + this.props.token }
     })
       .then(res => {
         if (res.status !== 200 && res.status !== 201) {
@@ -191,7 +189,6 @@ class Feed extends Component {
         return res.json();
       })
       .then(resData => {
-        console.log(resData);
         this.setState(prevState => {
           const updatedPosts = prevState.posts.filter(p => p._id !== postId);
           return { posts: updatedPosts, postsLoading: false };
@@ -262,6 +259,7 @@ class Feed extends Component {
                   key={post._id}
                   id={post._id}
                   author={post.creator.name}
+                  authorId={post.creator._id}
                   date={new Date(post.createdAt).toLocaleDateString('en-US')}
                   title={post.title}
                   image={post.imageUrl}
