@@ -4,6 +4,7 @@ const user = require('../models/user');
 const path = require('path');
 const fs = require('fs');
 const mongoose = require('mongoose');
+const io = require('../socket');
 
 // <=========================== GET ALL POSTS FROM DB ===========================> //
 exports.getPosts = async (req, res, next) => {
@@ -51,10 +52,13 @@ exports.createPost = async (req, res, next) => {
     const createPost = await post({ title: title, content: content, imageUrl: imageUrl, creator: { _id: mongoose.Types.ObjectId(userId), name: getUser.name } }).save();
     getUser.post.push(createPost._id);
     getUser.save();
-    if (createPost && getUser) return res.status(201).json({
-      message: 'Post created successfully!',
-      post: createPost
-    });
+    if (createPost && getUser) {
+      io.getIO().emit('posts', { action: "Create", post: createPost });
+      return res.status(201).json({
+        message: 'Post created successfully!',
+        post: createPost
+      })
+    };
   } catch (err) {
     next(err);
   }
@@ -105,6 +109,7 @@ exports.updatePost = async (req, res, next) => {
     getPost.content = req.body.content;
     if (imageUrl !== getPost.imageUrl) clearImage(getPost.imageUrl);
     getPost.imageUrl = imageUrl;
+    io.getIO().emit('posts', { action: "Update", post: getPost });
     return getPost.save();
   } catch (err) {
     next(err);
@@ -132,6 +137,7 @@ exports.deletePost = async (req, res, next) => {
     getUser.post.pull(postId);
     getUser.save();
     clearImage(getPost.imageUrl);
+    io.getIO().emit('posts', { action: "Delete", post: deletedPost });
     return res.status(200).json({ message: "Deleted post successfully", });
 
   } catch (err) {

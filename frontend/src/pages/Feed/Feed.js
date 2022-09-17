@@ -1,4 +1,5 @@
 import React, { Component, Fragment } from 'react';
+import openSocket from 'socket.io-client';
 
 import Post from '../../components/Feed/Post/Post';
 import Button from '../../components/Button/Button';
@@ -35,6 +36,53 @@ class Feed extends Component {
       .catch(this.catchError);
 
     this.loadPosts();
+    const socket = openSocket('http://localhost:8080');
+    socket.on('posts', data => {
+      if (data.action === "Create") this.addPost(data.post);
+      if (data.action === "Update") this.updatePost(data.post);
+      if (data.action === "Delete") this.deletePost(data.post);
+    })
+  }
+
+  addPost = post => {
+    this.setState(prevState => {
+      const updatedPosts = [...prevState.posts];
+      if (prevState.postPage === 1 && prevState.posts.length > 2) {
+        updatedPosts.pop();
+        updatedPosts.unshift(post);
+        return ({
+          posts: updatedPosts,
+          totalPosts: prevState.totalPosts + 1
+        });
+      } else if (prevState.postPage === 1 && prevState.posts.length < 2) {
+        updatedPosts.unshift(post);
+        return ({
+          posts: updatedPosts,
+          totalPosts: prevState.totalPosts
+        });
+      }
+
+    })
+  };
+
+  updatePost = post => {
+    this.setState(prevState => {
+      let updatedPosts = [...prevState.posts];
+      const postIndex = prevState.posts.findIndex(
+        p => p._id === post._id
+      );
+      if (postIndex > -1) updatedPosts[postIndex] = post;
+      return ({
+        posts: updatedPosts,
+      })
+    });
+  };
+
+  deletePost = post => {
+    this.setState(prevState => {
+      const updatedPosts = prevState.posts.filter(p => p._id !== post._id);
+      return { posts: updatedPosts };
+    });
   }
 
   loadPosts = direction => {
@@ -150,8 +198,6 @@ class Feed extends Component {
               p => p._id === prevState.editPost._id
             );
             updatedPosts[postIndex] = post;
-          } else if (prevState.posts.length < 2) {
-            updatedPosts = prevState.posts.concat(post);
           }
           return {
             posts: updatedPosts,
